@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AquaHealth | Water Quality Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{--navy:#172554;--blue:#2563eb;--cyan:#06b6d4;--green:#059669;--orange:#f97316;--purple:#9333ea;--bg:#f4f1ff;--ink:#172554}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#eaf3ff;background:radial-gradient(ellipse at 10% 0%,rgba(14,116,214,.22),transparent 32%),radial-gradient(ellipse at 95% 15%,rgba(8,145,178,.16),transparent 30%),linear-gradient(135deg,#06152e 0%,#0a2345 48%,#0b3155 100%);background-attachment:fixed}
+header{background:linear-gradient(115deg,#020b1e 0%,#0b2c58 48%,#075985 100%);color:white;padding:28px 4%;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;box-shadow:0 5px 18px #123b5c22}
+.brand{display:flex;align-items:center;gap:18px}.drop{background:white;color:#168bc4;border-radius:50%;width:68px;height:68px;display:grid;place-items:center;font-size:36px}
+h1{font-size:34px;margin:0 0 8px}header p{margin:0;font-size:17px}.pill{padding:13px 22px;border-radius:30px;background:#ffcf5c;color:#5d3d00;font-weight:bold}
+main{max-width:1600px;margin:auto;padding:28px 3% 45px}.section-title{font-size:27px;margin:8px 0 22px;color:#0b416b}
+.statusline{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:15px;flex-wrap:wrap}
+.status{border-radius:30px;padding:10px 18px;background:#d9fbe7;color:#087b40;font-weight:bold}.status.offline{background:#fff0d8;color:#9a5b00}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(230px,1fr));gap:22px;margin-bottom:26px}
+.metric{color:white;border-radius:24px;padding:27px;min-height:230px;box-shadow:0 14px 28px rgba(31,41,100,.20);border:1px solid rgba(255,255,255,.25)}.metric.tds{background:linear-gradient(135deg,#087fc1 0%,#0755a5 55%,#102c70 100%)}.metric.temp{background:linear-gradient(135deg,#1678b9 0%,#155e9b 55%,#123d70 100%)}
+.metric .emoji{font-size:30px}.metric h3{margin:12px 0;font-size:20px}.value{font-size:38px;font-weight:800;margin:12px 0}.sub{font-size:15px;opacity:.95}.tag{display:inline-block;background:white;color:#087b40;border-radius:24px;padding:8px 15px;margin-top:14px;font-weight:bold}
+.grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:22px;margin-bottom:25px}
+.panel{background:linear-gradient(145deg,rgba(13,37,70,.96),rgba(10,49,82,.96));backdrop-filter:blur(12px);border:1px solid rgba(96,165,250,.22);border-radius:24px;padding:25px;box-shadow:0 14px 35px rgba(0,0,0,.24);color:#eaf3ff}.panel h2{font-size:23px;margin:0 0 20px;color:#d8edff}
+.analysis{border:1px solid #38bdf8;background:linear-gradient(135deg,#0b3554,#104568);border-radius:20px;padding:22px;color:#e0f2fe}.analysis h3{font-size:25px;margin:0 0 12px}.analysis p{line-height:1.55;margin:8px 0}
+.minerals{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.mineral{background:linear-gradient(145deg,#123b63,#102d50);border:1px solid #285b85;border-radius:15px;padding:17px;transition:transform .2s,box-shadow .2s;color:#e5f3ff}.mineral:hover{transform:translateY(-4px);box-shadow:0 10px 22px rgba(3,105,161,.22)}.mineral b{display:block;color:#7dd3fc;margin-bottom:7px}
+.note{font-size:13px;color:#a9c6df;line-height:1.5;margin-top:15px}
+.analysis-detail{margin-top:14px;padding:13px 15px;border-radius:13px;background:#082846;border:1px solid #28628b;line-height:1.5}
+.gauge-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:24px 0}
+.gauge-card{background:linear-gradient(145deg,#102f51,#0a2441);border:1px solid #285b85;border-radius:20px;padding:22px;text-align:center}
+.gauge{--pct:0;--gauge-color:#38bdf8;width:170px;height:170px;border-radius:50%;margin:12px auto 16px;display:grid;place-items:center;background:conic-gradient(var(--gauge-color) calc(var(--pct)*1%),#254968 0);position:relative}
+.gauge:before{content:"";position:absolute;inset:13px;border-radius:50%;background:#0b2948}
+.gauge-inner{position:relative;z-index:1}
+.gauge-number{font-size:29px;font-weight:800;color:#f0f9ff}
+.gauge-caption{font-size:12px;color:#a9c6df;margin-top:4px}
+.quality-pill{display:inline-block;border-radius:30px;padding:8px 14px;font-weight:700;margin-top:10px;background:#173b5b;color:#cdeaff}
+.mineral-value{display:block;color:#a9c6df;font-size:13px;margin-top:8px}
+@media(max-width:560px){.gauge-grid{grid-template-columns:1fr}.gauge{width:150px;height:150px}}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0}.controls input{padding:12px;border:1px solid #376487;border-radius:10px;min-width:240px;flex:1;background:#071d36;color:#eaf3ff}.btn{border:0;border-radius:10px;background:#0877a8;color:white;padding:12px 18px;font-weight:bold;cursor:pointer}.btn.secondary{background:#0b416b}.btn.warn{background:#b66b08}
+table{width:100%;border-collapse:collapse;min-width:600px}th{background:#061b35;color:#eaf6ff;padding:14px}td{text-align:center;padding:13px;border-bottom:1px solid #254766;color:#e5f3ff}.tablewrap{overflow-x:auto}
+footer{text-align:center;color:#a9c6df;padding:20px}
+@media(max-width:850px){.grid2{grid-template-columns:1fr}.minerals{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.cards{grid-template-columns:1fr}.minerals{grid-template-columns:1fr}h1{font-size:27px}.metric{min-height:190px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="drop">💧</div><div><h1>AquaHealth</h1><p>Smart Water Quality Analysis • IoT Monitoring</p></div></div>
+  <div class="pill" id="modeBadge">AWAITING LIVE CONNECTION</div>
+</header>
+<main>
+  <div class="statusline"><h2 class="section-title">💧 Current Water Test</h2><span class="status offline" id="connectionStatus">● NOT CONNECTED</span></div>
+  <section class="cards">
+    <article class="metric tds"><div class="emoji">💧</div><h3>Total Dissolved Solids (TDS)</h3><div class="value" id="tdsValue">-- ppm</div><div class="sub">Combined dissolved substances • estimated</div><span class="tag" id="tdsStatus">WAITING FOR SENSOR</span></article>
+    <article class="metric temp"><div class="emoji">🌡️</div><h3>Water Temperature</h3><div class="value" id="temperatureValue">-- °C</div><div class="sub" id="temperatureSource">Waiting for sensor</div><span class="tag" id="tempStatus">WAITING FOR SENSOR</span></article>
+  </section>
+  <section class="grid2">
+    <div class="panel"><h2>📈 TDS Monitoring Trend</h2><canvas id="tdsChart" height="125"></canvas><div class="analysis-detail" id="trendInsight">Waiting for a valid sensor reading. The trend will explain whether TDS is rising, falling or steady as live readings arrive.</div><p class="note">The graph shows estimated total dissolved solids (ppm). It does not identify individual minerals.</p></div>
+    <div class="panel"><h2>🔎 Water Quality Information</h2><div class="analysis" id="analysisBox"><h3>💧 TDS: Sample reading</h3><p>Waiting for ESP32 sensor data. Connect your device to begin monitoring.</p><p>TDS is an estimate of the total dissolved substances in water. It does not identify individual minerals or prove that water is safe to drink.</p></div></div>
+  </section>
+  <section class="panel" style="margin-bottom:25px">
+    <h2>🧪 Common Minerals and Dissolved Ions</h2>
+    <div class="minerals">
+      <div class="mineral"><b>Calcium (Ca²⁺)</b>Common mineral found in water; contributes to hardness.<span class="mineral-value">Individual value: Not measured</span></div>
+      <div class="mineral"><b>Magnesium (Mg²⁺)</b>Common dissolved mineral; contributes to hardness.<span class="mineral-value">Individual value: Not measured</span></div>
+      <div class="mineral"><b>Sodium (Na⁺)</b>Dissolved ion that may be present in natural or treated water.<span class="mineral-value">Individual value: Not measured</span></div>
+      <div class="mineral"><b>Potassium (K⁺)</b>Another ion that can contribute to dissolved-solids content.<span class="mineral-value">Individual value: Not measured</span></div>
+      <div class="mineral"><b>Chloride (Cl⁻)</b>Common dissolved ion, often present with sodium.<span class="mineral-value">Individual value: Not measured</span></div>
+      <div class="mineral"><b>Bicarbonate (HCO₃⁻)</b>Common ion in groundwater and mineral water.<span class="mineral-value">Individual value: Not measured</span></div>
+    </div>
+    <p class="note"><b>Important:</b> Your TDS sensor measures an overall estimated TDS value. It cannot tell how many ppm of calcium, magnesium, sodium or other individual minerals are present. Individual mineral concentrations require separate laboratory or ion-specific testing.</p>
+  </section>
+  <section class="panel">
+    <h2>📋 Water Quality History</h2>
+    <div class="tablewrap"><table><thead><tr><th>Date &amp; Time</th><th>TDS (estimated)</th><th>Temperature</th><th>Data Source</th></tr></thead><tbody id="historyBody"><tr><td colspan="4">Waiting for ESP32 sensor readings</td></tr></tbody></table></div>
+    <div class="controls"><button class="btn secondary" id="downloadBtn">⬇ Download History (CSV)</button><button class="btn warn" id="testBtn">🔔 Test Alert</button></div>
+  </section>
+  <section class="panel" style="margin-top:25px">
+    <h2>⭕ Live Measurement Indicators</h2>
+    <p class="note">These circles are measurement indicators, not an overall drinking-water safety percentage.</p>
+    <div class="gauge-grid">
+      <div class="gauge-card">
+        <h3>💧 TDS reference scale</h3>
+        <div class="gauge" id="tdsGauge" style="--pct:0;--gauge-color:#38bdf8">
+          <div class="gauge-inner"><div class="gauge-number" id="tdsGaugeNumber">--%</div><div class="gauge-caption">of 600 ppm taste reference</div></div>
+        </div>
+        <div class="quality-pill" id="tdsGaugeStatus">Waiting for TDS</div>
+        <p class="note">600 ppm is a taste/palatability reference only. This is not a safety score.</p>
+      </div>
+      <div class="gauge-card">
+        <h3>🌡️ Temperature indicator</h3>
+        <div class="gauge" id="tempGauge" style="--pct:0;--gauge-color:#a78bfa">
+          <div class="gauge-inner"><div class="gauge-number" id="tempGaugeNumber">-- °C</div><div class="gauge-caption">0–50 °C display scale</div></div>
+        </div>
+        <div class="quality-pill" id="tempGaugeStatus">Waiting for DS18B20</div>
+        <p class="note">Temperature is shown only when the DS18B20 is detected.</p>
+      </div>
+    </div>
+  </section>
+  <section class="panel" style="margin-top:25px">
+    <h2>🔌 Connect ESP32</h2>
+    <p>Enter the ESP32 IP address shown in Arduino IDE Serial Monitor. Keep your laptop and ESP32 on the same Wi-Fi network.</p>
+    <div class="controls"><input id="espIp" value="10.83.120.10" placeholder="ESP32 IP address (example: 192.168.1.105)"><button class="btn" id="connectBtn">Connect to ESP32</button></div>
+    <p class="note" id="connectMessage">Not connected yet. Your ESP32 IP is pre-filled; click Connect to ESP32.</p>
+  </section>
+</main>
+<footer>💧 <b>AquaHealth</b> — IoT-Based Water Quality Monitoring and Analysis System<br>Sensor readings • Data visualization • Educational mineral information</footer>
+<script>
+const historyRows=[];
+let previousPpm=null;
+let chart;
+let liveMode=false;
+const demo={tdsPpmEstimate:280,temperatureValid:true,temperatureC:25.6};
+function stamp(){return new Date().toLocaleString();}
+function setText(id,value){document.getElementById(id).textContent=value;}
+function updateDashboard(data,source){
+  const ppm=Number(data.tdsPpmEstimate);
+  setText("tdsValue",Number.isFinite(ppm)?ppm.toFixed(1)+" ppm":"Unavailable");
+  const raw=Number(data.tdsRaw);
+  const hasSignal=Number.isFinite(raw) && raw>0;
+  setText("tdsStatus",source==="LIVE"?(hasSignal?"LIVE SENSOR DATA":"CHECK TDS WIRING"):"WAITING FOR SENSOR");
+  const validTemp=data.temperatureValid===true && Number.isFinite(Number(data.temperatureC));
+  setText("temperatureValue",validTemp?Number(data.temperatureC).toFixed(1)+" °C":"Not detected");
+  setText("temperatureSource",validTemp?(source==="LIVE"?"DS18B20 • Live sensor":"Waiting for sensor"):"DS18B20 not detected");
+  setText("tempStatus",validTemp?(source==="LIVE"?"LIVE SENSOR DATA":"WAITING FOR SENSOR"):"CHECK SENSOR");
+  setText("connectionStatus",source==="LIVE"?"● ESP32 CONNECTED":"● NOT CONNECTED");
+  document.getElementById("connectionStatus").className="status"+(source==="LIVE"?"":" offline");
+  setText("modeBadge",source==="LIVE"?"LIVE ESP32 DATA":"AWAITING LIVE CONNECTION");
+  const analysis=document.getElementById("analysisBox");
+  const trend=document.getElementById("trendInsight");
+  const tdsGaugePct=Number.isFinite(ppm)?Math.max(0,Math.min(100,(ppm/600)*100)):0;
+  document.getElementById("tdsGauge").style.setProperty("--pct",tdsGaugePct);
+  setText("tdsGaugeNumber",Number.isFinite(ppm)?Math.round(tdsGaugePct)+"%":"--%");
+  setText("tdsGaugeStatus",!hasSignal?"No valid TDS signal":ppm<=600?"At or below 600 ppm taste reference":ppm<=1000?"Above 600 ppm taste reference":"High TDS estimate — retest");
+  if(validTemp){
+    const tempPct=Math.max(0,Math.min(100,(Number(data.temperatureC)/50)*100));
+    document.getElementById("tempGauge").style.setProperty("--pct",tempPct);
+    setText("tempGaugeNumber",Number(data.temperatureC).toFixed(1)+" °C");
+    setText("tempGaugeStatus","Live DS18B20 reading");
+  } else {
+    document.getElementById("tempGauge").style.setProperty("--pct",0);
+    setText("tempGaugeNumber","-- °C");
+    setText("tempGaugeStatus","Sensor not detected");
+  }
+  if(!hasSignal){
+    analysis.innerHTML="<h3>⚠️ TDS sensor signal not detected</h3><p>The ESP32 reports a raw ADC value of "+(Number.isFinite(raw)?raw:"unavailable")+". Check the TDS module power, GND and analog output connection to GPIO34.</p><p><b>Do not interpret 0 ppm as proof of pure or safe water.</b></p>";
+    setText("trendInsight","No valid TDS signal yet. Check the sensor connection before interpreting the graph.");
+  } else if(Number.isFinite(ppm)){
+    let desc=ppm<=600?"This TDS level is generally associated with good taste/palatability.":ppm<=1000?"This TDS level may affect taste. Consider further water testing.":"This TDS level may be noticeably unpalatable. Further testing is recommended.";
+    analysis.innerHTML="<h3>💧 TDS: "+ppm.toFixed(1)+" ppm (estimated)</h3><p>"+desc+"</p><p><b>Interpretation:</b> "+(ppm<=600?"At or below the commonly used 600 mg/L taste reference.":ppm<=1000?"Above the 600 mg/L taste reference; taste may be affected.":"Above 1000 mg/L; taste may be noticeably affected.")+"</p><p><b>Note:</b> TDS alone cannot determine whether water is safe to drink. It does not detect bacteria, viruses or specific contaminants.</p>";
+    if(previousPpm===null) setText("trendInsight","First valid reading: "+ppm.toFixed(1)+" ppm. More readings are needed to identify a trend.");
+    else { const diff=ppm-previousPpm; setText("trendInsight",Math.abs(diff)<2?"TDS is currently steady.":diff>0?"TDS is rising by "+diff.toFixed(1)+" ppm since the previous reading.":"TDS is falling by "+Math.abs(diff).toFixed(1)+" ppm since the previous reading."); }
+    previousPpm=ppm;
+  }
+  if(source==="LIVE" && hasSignal && Number.isFinite(ppm)){
+    historyRows.unshift({time:stamp(),tds:ppm,temp:validTemp?Number(data.temperatureC).toFixed(1)+" °C":"Not detected",source:"ESP32"});
+    if(historyRows.length>30)historyRows.pop();
+    renderHistory();
+    if(chart){chart.data.labels.push(new Date().toLocaleTimeString());chart.data.datasets[0].data.push(ppm);if(chart.data.labels.length>20){chart.data.labels.shift();chart.data.datasets[0].data.shift();}chart.update();}
+  }
+}
+function renderHistory(){
+  const body=document.getElementById("historyBody");
+  body.innerHTML=historyRows.length?historyRows.map(r=>`<tr><td>${r.time}</td><td>${Number(r.tds).toFixed(1)} ppm</td><td>${r.temp}</td><td>${r.source}</td></tr>`).join(""):'<tr><td colspan="4">No live readings yet</td></tr>';
+}
+async function connectESP(){
+  const ip=document.getElementById("espIp").value.trim().replace(/^https?:\/\//,"").replace(/\/.*$/,"");
+  if(!ip){setText("connectMessage","Please enter your ESP32 IP address.");return;}
+  const url="http://"+ip+"/api/readings";
+  setText("connectMessage","Connecting to "+url+" ...");
+  try{
+    const response=await fetch(url,{cache:"no-store"});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    const data=await response.json();
+    if(!("tdsPpmEstimate" in data))throw new Error("The ESP32 response does not contain tdsPpmEstimate.");
+    liveMode=true;updateDashboard(data,"LIVE");
+    setText("connectMessage","Connected! Live readings refresh every 2 seconds.");
+    if(window.liveTimer)clearInterval(window.liveTimer);
+    window.liveTimer=setInterval(async()=>{
+      try{const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);const d=await r.json();updateDashboard(d,"LIVE");setText("connectMessage","Connected! Live readings refresh every 2 seconds.");}
+      catch(e){setText("connectMessage","Connection lost: "+e.message+". Check Wi-Fi and ESP32 power.");}
+    },2000);
+  }catch(e){
+    liveMode=false;setText("connectMessage","Could not connect: "+e.message+". Check the ESP32 IP, Wi-Fi and CORS setting.");
+  }
+}
+document.getElementById("connectBtn").addEventListener("click",connectESP);
+
+document.getElementById("testBtn").addEventListener("click",()=>alert("AquaHealth alert interface test only. This does not test drinking-water safety."));
+document.getElementById("downloadBtn").addEventListener("click",()=>{
+  const rows=[["Date & Time","TDS ppm (estimated)","Temperature","Source"],...historyRows.map(r=>[r.time,r.tds,r.temp,r.source])];
+  const csv=rows.map(row=>row.map(v=>'"'+String(v??"").replaceAll('"','""')+'"').join(",")).join("\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="AquaHealth_History.csv";a.click();URL.revokeObjectURL(a.href);
+});
+if(window.Chart){
+  chart=new Chart(document.getElementById("tdsChart"),{type:"line",data:{labels:[],datasets:[{label:"TDS (ppm, estimated)",data:[],borderColor:"#079b65",backgroundColor:"rgba(7,155,101,.12)",fill:true,tension:.35}]},options:{responsive:true,plugins:{legend:{labels:{color:"#d8edff"}}},scales:{x:{ticks:{color:"#a9c6df"}},y:{beginAtZero:true,ticks:{color:"#a9c6df"},title:{display:true,text:"TDS (ppm)",color:"#d8edff"}}}}});
+}
+setText("tdsValue","-- ppm");
+setText("temperatureValue","-- °C");
+setText("tdsStatus","WAITING FOR SENSOR");
+setText("tempStatus","WAITING FOR SENSOR");
+setText("modeBadge","AWAITING LIVE CONNECTION");
+setText("connectionStatus","● NOT CONNECTED");
+document.getElementById("connectionStatus").className="status offline";
+document.getElementById("analysisBox").innerHTML="<h3>💧 Waiting for live readings</h3><p>Connect your ESP32 to display actual sensor data.</p><p>TDS is an estimate of total dissolved substances. It does not identify individual minerals or prove water is safe to drink.</p>";
+</script>
+</body>
+</html>
