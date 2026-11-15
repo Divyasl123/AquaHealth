@@ -8,8 +8,8 @@
 // WIFI SETTINGS
 // =====================================
 
-const char* WIFI_SSID = "POCO M6 Pro 5G";
-const char* WIFI_PASSWORD = "1223334444";
+const char* WIFI_SSID = "YOUR_WIFI_NAME";
+const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
 // =====================================
 // SENSOR PINS
